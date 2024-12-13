@@ -10,7 +10,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
-training_images_dir = "Training_images"
+training_images_dir = "../Training_images"
 
 known_face_encodings = []
 known_face_names = []
