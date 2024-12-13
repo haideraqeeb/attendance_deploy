@@ -24,34 +24,25 @@ for filename in os.listdir(training_images_dir):
             known_face_encodings.append(encodings[0])
             known_face_names.append(os.path.splitext(filename)[0])
 
-@app.route("/")
-def index():
-    return "use get_attendance route as post request"
 
 @app.route("/get_attendance", methods=["POST"])
 def get_attendance():
     try:
-        json_data = request.get_json()
-        if not json_data or "link" not in json_data:
-            return jsonify({"error": "Invalid input, 'link' field is required"}), 400
+        if 'image' not in request.files:
+            return jsonify({"error": "No file part"}), 400
 
-        image_link = json_data["link"]
+        image = request.files['image']
 
-        if not isinstance(image_link, str):
-            return jsonify({"error": "The 'link' field must be a string"}), 400
+        image_bytes = image.read()
 
-        response = requests.get(image_link)
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to download image"}), 400
-
-        image_np = np.frombuffer(response.content, np.uint8)
+        image_np = np.frombuffer(image_bytes, np.uint8)
         group_image = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
         rgb_group_image = cv2.cvtColor(group_image, cv2.COLOR_BGR2RGB)
 
         face_locations = face_recognition.face_locations(rgb_group_image)
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        attendance_data = []
+        usns = []
 
         for i, (top, right, bottom, left) in enumerate(face_locations):
             face_encoding = face_recognition.face_encodings(
@@ -74,15 +65,21 @@ def get_attendance():
             else:
                 name = "Unknown"
 
-            name = name + "@dsce.edu.in"
+            # Extract USN or add 'Unknown'
+            usn = name if name == "Unknown" else name.split("@")[0]
+            usns.append(usn)
 
-            attendance_data.append({"Name": name})
+        # Create response
+        response = {
+            "usn": usns,
+            "timestamp": current_datetime
+        }
 
-        return jsonify(attendance_data)
+        return jsonify(response)
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=8000, debug=True)
